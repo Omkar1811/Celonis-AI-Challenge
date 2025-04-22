@@ -43,8 +43,8 @@ images:
   - 'gcr.io/$PROJECT_ID/twitter-support-chatbot'
 
 substitutions:
-  _HUGGINGFACE_ENDPOINT_URL: https://btyo9mn1r4tj8uuo.us-east-1.aws.endpoints.huggingface.cloud
-  _HUGGINGFACE_TOKEN: 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
+  _HUGGINGFACE_ENDPOINT_URL: 
+  _HUGGINGFACE_TOKEN:
   _GCS_BUCKET_NAME: twitter_chat_history
   _GCS_CREDENTIALS: $(cat credentials.json | jq -c .)
   _REDIS_HOST: redis-host  # Replace with your Redis host
