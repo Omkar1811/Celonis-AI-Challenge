@@ -23,7 +23,7 @@ class LLMManager:
     """LLM Manager for handling the language model, prioritizing Hugging Face Endpoints."""
     
     # Removed use_gpu flag as endpoint is the primary method now
-    def __init__(self, model_name="meta-llama/Meta-Llama-3-8B-Instruct", endpoint_url=ENDPOINT_URL): 
+    def __init__(self, model_name="mistral-7b-instruct-v0-3-fsp", endpoint_url=ENDPOINT_URL): 
         """Initialize the LLMManager, attempting to use the specified endpoint."""
         logger.info(f"Initializing LLMManager with model: {model_name}")
         logger.info(f"Using endpoint URL: {endpoint_url}")
