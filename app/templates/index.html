@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Twitter Support Chatbot</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="chat-container">
+            <div class="chat-header">
+                <h4 class="mb-0">Twitter Support Chatbot</h4>
+                <div class="controls">
+                    <div class="toggle-scores">
+                        <input type="checkbox" id="toggleScores" class="me-1">
+                        <label for="toggleScores">Show similarity scores</label>
+                    </div>
+                    <button id="newSessionBtn" class="btn btn-sm btn-light">New Session</button>
+                </div>
+            </div>
+            <div id="chatMessages" class="chat-messages">
+                <div class="bot-message message">
+                    Hello! I'm a Twitter support chatbot. How can I help you today?
+                </div>
+            </div>
+            <div class="chat-input">
+                <form id="chatForm" class="d-flex">
+                    <input type="text" id="userInput" class="form-control me-2" placeholder="Type your message here..." autocomplete="off">
+                    <button type="submit" class="btn btn-primary">Send</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize variables
+            let sessionId = '{{ session_id }}';
+            const chatForm = document.getElementById('chatForm');
+            const userInput = document.getElementById('userInput');
+            const chatMessages = document.getElementById('chatMessages');
+            const newSessionBtn = document.getElementById('newSessionBtn');
+            const toggleScores = document.getElementById('toggleScores');
+            let showScores = false;
+
+            // Toggle similarity scores display
+            toggleScores.addEventListener('change', function() {
+                showScores = this.checked;
+                const scoreElements = document.querySelectorAll('.similarity-scores');
+                scoreElements.forEach(el => {
+                    el.style.display = showScores ? 'block' : 'none';
+                });
+            });
+
+            // Function to add a message to the chat
+            function addMessage(message, isUser, scores = null) {
+                const messageDiv = document.createElement('div');
+                messageDiv.classList.add('message');
+                messageDiv.classList.add(isUser ? 'user-message' : 'bot-message');
+                messageDiv.textContent = message;
+                
+                // Add container for the message and potential scores
+                const container = document.createElement('div');
+                container.appendChild(messageDiv);
+                
+                // Add similarity scores if available and not a user message
+                if (scores && !isUser) {
+                    const scoresDiv = document.createElement('div');
+                    scoresDiv.classList.add('similarity-scores');
+                    scoresDiv.style.display = showScores ? 'block' : 'none';
+                    
+                    const scoresTitle = document.createElement('div');
+                    scoresTitle.textContent = 'Similarity Scores:';
+                    scoresTitle.style.fontWeight = 'bold';
+                    scoresTitle.style.marginBottom = '0.5rem';
+                    scoresDiv.appendChild(scoresTitle);
+                    
+                    scores.forEach(score => {
+                        const scoreItem = document.createElement('div');
+                        scoreItem.classList.add('score-item');
+                        
+                        const scoreContent = document.createElement('div');
+                        scoreContent.textContent = score.content;
+                        scoreItem.appendChild(scoreContent);
+                        
+                        const scoreValue = document.createElement('div');
+                        scoreValue.classList.add('score-value');
+                        scoreValue.textContent = `Score: ${score.score.toFixed(4)}`;
+                        scoreItem.appendChild(scoreValue);
+                        
+                        scoresDiv.appendChild(scoreItem);
+                    });
+                    
+                    container.appendChild(scoresDiv);
+                    
+                    // Add a "Show Scores" toggle link
+                    if (!showScores) {
+                        const showScoresLink = document.createElement('div');
+                        showScoresLink.classList.add('show-scores');
+                        showScoresLink.textContent = 'Show similarity scores';
+                        showScoresLink.addEventListener('click', function() {
+                            const sibling = this.previousElementSibling;
+                            if (sibling && sibling.classList.contains('similarity-scores')) {
+                                const isVisible = sibling.style.display !== 'none';
+                                sibling.style.display = isVisible ? 'none' : 'block';
+                                this.textContent = isVisible ? 'Show similarity scores' : 'Hide similarity scores';
+                            }
+                        });
+                        container.appendChild(showScoresLink);
+                    }
+                }
+                
+                chatMessages.appendChild(container);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+
+            // Function to show "thinking" indicator
+            function showThinking() {
+                const thinkingDiv = document.createElement('div');
+                thinkingDiv.classList.add('thinking');
+                thinkingDiv.id = 'thinking';
+                thinkingDiv.textContent = 'Thinking...';
+                chatMessages.appendChild(thinkingDiv);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+
+            // Function to hide "thinking" indicator
+            function hideThinking() {
+                const thinkingDiv = document.getElementById('thinking');
+                if (thinkingDiv) {
+                    thinkingDiv.remove();
+                }
+            }
+
+            // Handle form submission
+            chatForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const message = userInput.value.trim();
+                if (message === '') return;
+
+                // Add user message to chat
+                addMessage(message, true);
+                userInput.value = '';
+
+                // Show thinking indicator
+                showThinking();
+
+                try {
+                    // Send message to API
+                    const response = await fetch('/api/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            input: message,
+                            session_id: sessionId
+                        })
+                    });
+
+                    // Hide thinking indicator
+                    hideThinking();
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        sessionId = data.session_id;
+                        addMessage(data.response, false, data.similarity_scores);
+                    } else {
+                        const error = await response.json();
+                        addMessage(`Error: ${error.detail}`, false);
+                    }
+                } catch (error) {
+                    // Hide thinking indicator
+                    hideThinking();
+                    addMessage('Sorry, there was an error processing your request.', false);
+                    console.error('Error:', error);
+                }
+            });
+
+            // Handle new session button click
+            newSessionBtn.addEventListener('click', async function() {
+                try {
+                    showThinking();
+                    const response = await fetch('/api/new_session', {
+                        method: 'POST'
+                    });
+                    hideThinking();
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        sessionId = data.session_id;
+                        
+                        // Clear chat messages
+                        chatMessages.innerHTML = '';
+                        addMessage(data.response, false);
+                    } else {
+                        const error = await response.json();
+                        addMessage(`Error: ${error.detail}`, false);
+                    }
+                } catch (error) {
+                    hideThinking();
+                    addMessage('Sorry, there was an error creating a new session.', false);
+                    console.error('Error:', error);
+                }
+            });
+        });
+    </script>
+</body>
+</html> 

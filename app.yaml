@@ -1,0 +1,38 @@
+runtime: python39
+env: flex
+
+runtime_config:
+  python_version: 3.9
+
+# Set environment variables from .env file
+env_variables:
+  HUGGINGFACE_ENDPOINT_URL: "https://btyo9mn1r4tj8uuo.us-east-1.aws.endpoints.huggingface.cloud"
+  HUGGINGFACE_TOKEN: "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"
+  GCS_BUCKET_NAME: "twitter_chat_history"
+  GCS_CREDENTIALS_PATH: "credentials.json"
+  REDIS_HOST: "10.0.0.1"  # Replace with your Redis host IP or DNS
+  REDIS_PORT: "6379"
+  REDIS_PASSWORD: ""  # Set a password if needed
+  CACHE_TTL: "3600"  # 1 hour cache TTL
+  # Add any other environment variables your app needs
+
+# Configure resources (adjust as needed)
+resources:
+  cpu: 8
+  memory_gb: 32
+  disk_size_gb: 64
+
+# Automatic scaling settings (adjust as needed)
+automatic_scaling:
+  min_num_instances: 1
+  max_num_instances: 10
+  cpu_utilization:
+    target_utilization: 0.65
+
+# Network settings (uses default)
+# network: {} 
+
+handlers:
+- url: /.*
+  script: auto
+  secure: always 

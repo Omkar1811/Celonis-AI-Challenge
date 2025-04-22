@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Twitter Support Chatbot</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .chat-container {
+            height: calc(100vh - 200px);
+            overflow-y: auto;
+        }
+        .similarity-score {
+            border-left: 4px solid #4F46E5;
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #F3F4F6;
+            border-radius: 8px;
+        }
+        .message {
+            max-width: 80%;
+            margin: 10px;
+            padding: 10px;
+            border-radius: 8px;
+        }
+        .user-message {
+            background-color: #E5E7EB;
+            margin-left: auto;
+        }
+        .bot-message {
+            background-color: #4F46E5;
+            color: white;
+            margin-right: auto;
+        }
+        .score-badge {
+            background-color: #4F46E5;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            margin-left: 8px;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-center mb-8">Twitter Support Chatbot</h1>
+        
+        <div class="bg-white rounded-lg shadow-lg p-4">
+            <div id="chat-messages" class="chat-container mb-4">
+                <!-- Messages will be displayed here -->
+            </div>
+            
+            <div class="flex">
+                <input type="text" id="user-input" 
+                       class="flex-1 p-2 border rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       placeholder="Type your message here...">
+                <button onclick="sendMessage()" 
+                        class="bg-blue-600 text-white px-4 py-2 rounded-r-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    Send
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let sessionId = null;
+
+        async function sendMessage() {
+            const input = document.getElementById('user-input');
+            const message = input.value.trim();
+            if (!message) return;
+
+            // Display user message
+            displayMessage(message, 'user');
+            input.value = '';
+
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        input: message,
+                        session_id: sessionId
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (!sessionId) {
+                    sessionId = data.session_id;
+                }
+
+                // Display bot response
+                displayMessage(data.response, 'bot');
+
+                // Display similarity scores
+                if (data.similarity_scores && data.similarity_scores.length > 0) {
+                    const scoresContainer = document.createElement('div');
+                    scoresContainer.className = 'mt-4 p-4 bg-gray-50 rounded-lg';
+                    scoresContainer.innerHTML = '<h3 class="font-bold mb-2 text-lg">Similar Questions and Answers:</h3>';
+                    
+                    data.similarity_scores.forEach((score, index) => {
+                        scoresContainer.innerHTML += `
+                            <div class="similarity-score">
+                                <div class="flex items-center mb-2">
+                                    <h4 class="font-semibold">Question ${index + 1}:</h4>
+                                    <span class="score-badge">Score: ${score.score.toFixed(4)}</span>
+                                </div>
+                                <div class="mb-2">
+                                    <p class="font-medium">Question:</p>
+                                    <p class="ml-2">${score.content}</p>
+                                </div>
+                                <div>
+                                    <p class="font-medium">Answer:</p>
+                                    <p class="ml-2">${score.answer || 'No answer available'}</p>
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    document.getElementById('chat-messages').appendChild(scoresContainer);
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                displayMessage('Sorry, there was an error processing your request.', 'bot');
+            }
+        }
+
+        function displayMessage(message, sender) {
+            const messagesContainer = document.getElementById('chat-messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}-message`;
+            messageDiv.textContent = message;
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // Handle Enter key press
+        document.getElementById('user-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html> 
